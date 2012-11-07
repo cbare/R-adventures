@@ -16,9 +16,36 @@ data <- generate.data(n, m=1500, sig.features=1:100, noise.level)
 train <- sample.int(n, n*0.85)
 test <- setdiff(seq(n), train)
 
+generate_folds <- function(n, folds) {
+  sample(
+    rep(seq(folds), ceiling(n/folds)),
+    size=n, replace=FALSE)
+}
+
+#' Find the alpha that generates best correlation with test data
+#' by crossvalidation
+alphas <- seq(0.9,1,0.01)
+cors <- double(length=length(alphas))
+foldid <- generate_folds(length(train), 10)
+
+for (i in seq(along=alphas)) {
+  fit <- cv.glmnet(data$features[train,], 
+                   data$response[train, drop=FALSE],
+                   foldid=foldid,
+                   alpha=alphas[i])
+  
+  p <- predict(fit, data$features[test,])
+  cors[i] <- cor(p, data$response[test,])[1,1]
+}
+
+alpha.max <- alphas[which.max(cors)]
+
+
+
 #' Fit model using elastic net
 fit <- cv.glmnet(data$features[train,], 
                  data$response[train, drop=FALSE],
+                 alpha=alpha.max)
 compare.coefs(data, fit)
 
 #' Check our ability to model training data
